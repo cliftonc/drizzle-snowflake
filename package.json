@@ -1,0 +1,57 @@
+{
+  "name": "drizzle-snowflake",
+  "module": "./dist/index.mjs",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0",
+  "description": "A drizzle ORM driver for use with Snowflake. Based on drizzle's Postgres driver surface.",
+  "type": "module",
+  "scripts": {
+    "build": "bun build --target=node ./src/index.ts --outfile=./dist/index.mjs --packages=external && bun run build:declarations",
+    "build:declarations": "tsc --emitDeclarationOnly --project tsconfig.types.json",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "snowflake-sdk": ">=1.6.0",
+    "drizzle-orm": "^0.40.0"
+  },
+  "peerDependenciesMeta": {
+    "snowflake-sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "snowflake-sdk": "^1.15.0",
+    "@types/bun": "^1.2.5",
+    "drizzle-orm": "0.40.0",
+    "typescript": "^5.8.2",
+    "vitest": "^1.6.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.17"
+  },
+  "packageManager": "bun@1.3.6",
+  "keywords": [
+    "drizzle",
+    "snowflake"
+  ],
+  "license": "MIT",
+  "files": [
+    "src/**/*.ts",
+    "dist/*.mjs",
+    "dist/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}
