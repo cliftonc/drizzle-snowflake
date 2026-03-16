@@ -44,6 +44,10 @@
     "drizzle",
     "snowflake"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cliftonc/drizzle-snowflake"
+  },
   "license": "MIT",
   "files": [
     "src/**/*.ts",
