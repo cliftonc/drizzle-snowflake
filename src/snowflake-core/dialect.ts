@@ -110,6 +110,16 @@ export class SnowflakeDialect {
     if (!queries?.length) return undefined;
     for (const w of queries) {
       this._activeCteNames.add(w._.alias);
+      // Collect SQL.Aliased field aliases so cross-CTE raw SQL references
+      // resolve consistently (unquoted → uppercase in Snowflake).
+      // Skip Column instances to avoid collisions with table column names.
+      if (w._.selectedFields) {
+        for (const value of Object.values(w._.selectedFields)) {
+          if (is(value, SQL.Aliased) && value.fieldAlias) {
+            this._activeCteNames.add(value.fieldAlias);
+          }
+        }
+      }
     }
     const withSqlChunks = [sql`with `];
     for (const [i, w] of queries.entries()) {

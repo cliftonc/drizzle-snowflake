@@ -43,6 +43,14 @@ describe('SnowflakeDialect', () => {
     it('should return quoted names by default', () => {
       expect(dialect.escapeName('table_name')).toBe('"table_name"');
     });
+
+    it('should return unquoted names for active CTE aliases', () => {
+      const d = new SnowflakeDialect();
+      // Simulate buildWithCTE adding a CTE alias
+      (d as any)._activeCteNames.add('my_cte');
+      expect(d.escapeName('my_cte')).toBe('my_cte');
+      expect(d.escapeName('other_name')).toBe('"other_name"');
+    });
   });
 
   describe('escapeParam', () => {
