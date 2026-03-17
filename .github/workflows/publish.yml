@@ -8,14 +8,38 @@ on:
 permissions:
   id-token: write
   contents: read
+  actions: read
 
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
+  check-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify CI passed for this commit
+        run: |
+          COMMIT_SHA=$(git rev-list -1 HEAD)
+          echo "Checking CI status for commit $COMMIT_SHA"
+          # Wait up to 5 minutes for CI to complete
+          for i in $(seq 1 30); do
+            STATUS=$(gh run list --commit "$COMMIT_SHA" --workflow CI --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null || echo "not_found")
+            echo "Attempt $i: $STATUS"
+            if echo "$STATUS" | grep -q "completed success"; then
+              echo "CI passed!"
+              exit 0
+            elif echo "$STATUS" | grep -q "completed"; then
+              echo "CI completed but did not succeed: $STATUS"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for CI to complete"
+          exit 1
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   publish:
-    needs: ci
+    needs: check-ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
