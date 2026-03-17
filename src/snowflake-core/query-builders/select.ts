@@ -95,8 +95,8 @@ class SnowflakeSelectQueryBuilderBase extends TypedQueryBuilder<any, any> {
       typeof this.tableName === 'string' ? { [this.tableName]: true } : {};
   }
 
-  private createJoin(joinType: string) {
-    return (table: any, on: any) => {
+  private createJoin(joinType: string, lateral = false) {
+    return (table: any, on?: any) => {
       const baseTableName = this.tableName;
       const tableName = getTableLikeName(table);
       if (
@@ -135,7 +135,7 @@ class SnowflakeSelectQueryBuilderBase extends TypedQueryBuilder<any, any> {
       if (!this.config.joins) {
         this.config.joins = [];
       }
-      this.config.joins.push({ on, table, joinType, alias: tableName });
+      this.config.joins.push({ on, table, joinType, alias: tableName, lateral });
       if (typeof tableName === 'string') {
         switch (joinType) {
           case 'left': {
@@ -170,6 +170,10 @@ class SnowflakeSelectQueryBuilderBase extends TypedQueryBuilder<any, any> {
   rightJoin = this.createJoin('right');
   innerJoin = this.createJoin('inner');
   fullJoin = this.createJoin('full');
+
+  leftJoinLateral = this.createJoin('left', true);
+  innerJoinLateral = this.createJoin('inner', true);
+  crossJoinLateral = this.createJoin('cross', true);
 
   crossJoin(table: any) {
     return this.createJoin('cross')(table, undefined);

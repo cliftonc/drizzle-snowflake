@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { SnowflakeDatabase } from '../src/index.ts';
-import { events, getDb, items, users } from './setup.ts';
+import { events, getDb, items, products, users } from './setup.ts';
 
 describe('drizzle-snowflake', () => {
   let db: SnowflakeDatabase;
@@ -50,5 +50,64 @@ describe('drizzle-snowflake', () => {
       expect(row.userName).toBe('Alice');
       expect(row.eventName).toBeDefined();
     }
+  });
+
+  it('should perform a cross join lateral', async () => {
+    // For each user, find products more expensive than the user's score
+    const expensiveProducts = db
+      .select({
+        pname: sql<string>`${products.name}`.as('pname'),
+        pprice: sql<number>`${products.price}`.as('pprice'),
+      })
+      .from(products)
+      .where(sql`${products.price} > ${users.score}`)
+      .as('expensive');
+
+    const result = await db
+      .select({
+        userName: users.name,
+        productName: (expensiveProducts as any).pname,
+      })
+      .from(users)
+      .crossJoinLateral(expensiveProducts)
+      .where(eq(users.name, 'Alice'))
+      .orderBy((expensiveProducts as any).pprice) as any;
+
+    expect(result.length).toBeGreaterThan(0);
+    for (const row of result) {
+      expect(row.userName).toBe('Alice');
+      expect(row.productName).toBeDefined();
+    }
+  });
+
+  it('should perform a left join lateral', async () => {
+    // For each user, get their most expensive matching product (or null)
+    const topProduct = db
+      .select({
+        pname: sql<string>`${products.name}`.as('pname'),
+        pprice: sql<number>`${products.price}`.as('pprice'),
+      })
+      .from(products)
+      .where(sql`${products.price} > ${users.score}`)
+      .as('top_product');
+
+    const result = await db
+      .select({
+        userName: users.name,
+        topProductName: (topProduct as any).pname,
+      })
+      .from(users)
+      .leftJoinLateral(topProduct, sql`true`)
+      .orderBy(users.name) as any;
+
+    // All 4 users appear, each with their matching products (LEFT join preserves all users)
+    expect(result.length).toBeGreaterThanOrEqual(4);
+    // Every row should have a userName
+    for (const row of result) {
+      expect(row.userName).toBeDefined();
+    }
+    // All 4 users should be represented
+    const userNames = new Set(result.map((r: any) => r.userName));
+    expect(userNames.size).toBe(4);
   });
 });

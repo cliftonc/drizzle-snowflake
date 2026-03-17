@@ -201,14 +201,15 @@ export class SnowflakeDialect {
       }
       const table = joinMeta.table;
       const isCross = joinMeta.joinType === 'cross';
-      const onClause = isCross ? undefined : sql` on ${joinMeta.on}`;
+      const lateralSql = joinMeta.lateral ? sql` lateral` : undefined;
+      const onClause = isCross && !joinMeta.on ? undefined : joinMeta.on ? sql` on ${joinMeta.on}` : undefined;
       if (is(table, SnowflakeTable)) {
         const tableName = table[(SnowflakeTable as any).Symbol.Name];
         const tableSchema = table[(SnowflakeTable as any).Symbol.Schema];
         const origTableName = table[(SnowflakeTable as any).Symbol.OriginalName];
         const alias = tableName === origTableName ? undefined : joinMeta.alias;
         joinsArray.push(
-          sql`${sql.raw(joinMeta.joinType)} join ${tableSchema ? sql`${sql.identifier(tableSchema)}.` : undefined}${sql.identifier(origTableName)}${alias && sql` ${sql.identifier(alias)}`}${onClause}`,
+          sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${tableSchema ? sql`${sql.identifier(tableSchema)}.` : undefined}${sql.identifier(origTableName)}${alias && sql` ${sql.identifier(alias)}`}${onClause}`,
         );
       } else if (is(table, View)) {
         const viewName = (table as any)[ViewBaseConfig].name;
@@ -216,11 +217,11 @@ export class SnowflakeDialect {
         const origViewName = (table as any)[ViewBaseConfig].originalName;
         const alias = viewName === origViewName ? undefined : joinMeta.alias;
         joinsArray.push(
-          sql`${sql.raw(joinMeta.joinType)} join ${viewSchema ? sql`${sql.identifier(viewSchema)}.` : undefined}${sql.identifier(origViewName)}${alias && sql` ${sql.identifier(alias)}`}${onClause}`,
+          sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${viewSchema ? sql`${sql.identifier(viewSchema)}.` : undefined}${sql.identifier(origViewName)}${alias && sql` ${sql.identifier(alias)}`}${onClause}`,
         );
       } else {
         joinsArray.push(
-          sql`${sql.raw(joinMeta.joinType)} join ${table}${onClause}`,
+          sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${table}${onClause}`,
         );
       }
       if (index < joins.length - 1) {
