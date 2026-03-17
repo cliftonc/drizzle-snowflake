@@ -1,5 +1,7 @@
 # drizzle-snowflake
 
+> This driver was created to power [drizzle-cube](https://try.drizzle-cube.dev) (an embeddable semantic layer built on Drizzle) and [drizby](https://github.com/cliftonc/drizby) (an open source BI platform built on drizzle-cube). It enables both projects to query Snowflake natively via Drizzle ORM.
+
 A [Drizzle ORM](https://orm.drizzle.team/) driver for [Snowflake](https://www.snowflake.com/). Built on a standalone `snowflake-core` dialect module with `?` positional parameters and double-quote identifier quoting.
 
 Uses [`snowflake-sdk`](https://github.com/snowflakedb/snowflake-connector-nodejs) as the underlying client.
