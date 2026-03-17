@@ -109,9 +109,9 @@ describe('CTE patterns', () => {
 
   it('should handle CTE with UNION ALL via raw SQL', async () => {
     const combined = db.$with('combined').as(
-      sql`SELECT name, 'product' AS source FROM drizzle_test_products
+      sql`SELECT "name", 'product' AS source FROM "drizzle_test_products"
           UNION ALL
-          SELECT name, 'event' AS source FROM drizzle_test_events`,
+          SELECT "name", 'event' AS source FROM "drizzle_test_events"`,
     );
 
     const result = await db.with(combined)

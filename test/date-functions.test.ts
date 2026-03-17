@@ -49,7 +49,7 @@ describe('date functions', () => {
       const result = await db
         .select({
           name: events.name,
-          durationSecs: sql<number>`DATEDIFF('second', started_at, ended_at)`.as('duration_secs'),
+          durationSecs: sql<number>`DATEDIFF('second', "started_at", "ended_at")`.as('duration_secs'),
         })
         .from(events)
         .orderBy(events.id) as any;
@@ -64,7 +64,7 @@ describe('date functions', () => {
       const result = await db
         .select({
           name: events.name,
-          durationHours: sql<number>`DATEDIFF('hour', started_at, ended_at)`.as('duration_hours'),
+          durationHours: sql<number>`DATEDIFF('hour', "started_at", "ended_at")`.as('duration_hours'),
         })
         .from(events)
         .where(eq(events.name, 'Workshop')) as any;
@@ -77,10 +77,10 @@ describe('date functions', () => {
       const result = await db
         .select({
           name: events.name,
-          durationSecs: sql<number>`DATEDIFF('second', started_at, ended_at)`.as('duration_secs'),
+          durationSecs: sql<number>`DATEDIFF('second', "started_at", "ended_at")`.as('duration_secs'),
         })
         .from(events)
-        .where(gt(sql`DATEDIFF('second', started_at, ended_at)`, 5000)) as any;
+        .where(gt(sql`DATEDIFF('second', "started_at", "ended_at")`, 5000)) as any;
       expect(result.length).toBeGreaterThanOrEqual(2);
     });
   });

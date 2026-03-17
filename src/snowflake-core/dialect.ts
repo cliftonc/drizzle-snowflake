@@ -22,17 +22,19 @@ export class SnowflakeDialect {
   /** @internal */
   casing: any;
 
+  /** @internal */
+  private _activeCteNames = new Set<string>();
+
   constructor(config?: { casing?: any }) {
     this.casing = new CasingCache(config?.casing);
   }
 
-  escapeName(name: string): string {
-    // Snowflake uses unquoted identifiers that resolve to uppercase.
-    // Quoting preserves case, which causes mismatches between Drizzle's
-    // quoted references and external code using sql.raw() (e.g. CTE names).
-    // Not quoting keeps everything case-insensitive and consistent.
-    return name;
-  }
+  escapeName = (name: string): string => {
+    if (this._activeCteNames.has(name)) {
+      return name;
+    }
+    return `"${name}"`;
+  };
 
   escapeParam(_num: number): string {
     return '?';
@@ -106,6 +108,9 @@ export class SnowflakeDialect {
 
   buildWithCTE(queries: any[] | undefined): SQL | undefined {
     if (!queries?.length) return undefined;
+    for (const w of queries) {
+      this._activeCteNames.add(w._.alias);
+    }
     const withSqlChunks = [sql`with `];
     for (const [i, w] of queries.entries()) {
       withSqlChunks.push(sql`${sql.identifier(w._.alias)} as (${w._.sql})`);
@@ -452,13 +457,17 @@ export class SnowflakeDialect {
   }
 
   sqlToQuery(sql2: SQL, invokeSource?: any): any {
-    return sql2.toQuery({
-      casing: this.casing,
-      escapeName: this.escapeName,
-      escapeParam: this.escapeParam,
-      escapeString: this.escapeString,
-      prepareTyping: this.prepareTyping as any,
-      invokeSource,
-    });
+    try {
+      return sql2.toQuery({
+        casing: this.casing,
+        escapeName: this.escapeName,
+        escapeParam: this.escapeParam,
+        escapeString: this.escapeString,
+        prepareTyping: this.prepareTyping as any,
+        invokeSource,
+      });
+    } finally {
+      this._activeCteNames.clear();
+    }
   }
 }

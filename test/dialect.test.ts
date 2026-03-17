@@ -40,8 +40,8 @@ describe('SnowflakeDialect', () => {
   });
 
   describe('escapeName', () => {
-    it('should return unquoted names for Snowflake case-insensitive resolution', () => {
-      expect(dialect.escapeName('table_name')).toBe('table_name');
+    it('should return quoted names by default', () => {
+      expect(dialect.escapeName('table_name')).toBe('"table_name"');
     });
   });
 
