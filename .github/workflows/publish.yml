@@ -12,6 +12,7 @@ permissions:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
 
   publish:
     needs: ci

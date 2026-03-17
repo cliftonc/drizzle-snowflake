@@ -53,6 +53,12 @@ export const items = snowflakeTable('drizzle_test_items', {
 
 // -- Shared db instance (created once, reused across all test files) --
 
+export const hasCredentials = !!(
+  process.env.SNOWFLAKE_ACCOUNT &&
+  process.env.SNOWFLAKE_USER &&
+  process.env.SNOWFLAKE_PASSWORD
+);
+
 let _db: SnowflakeDatabase | undefined;
 
 export async function getDb(): Promise<SnowflakeDatabase> {
