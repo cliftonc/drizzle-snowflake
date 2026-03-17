@@ -1,20 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { pgTable } from 'drizzle-orm/pg-core';
+import { describe, expect, it } from 'vitest';
 import {
-  snowflakeVariant,
   snowflakeArray,
+  snowflakeDate,
+  snowflakeGeography,
+  snowflakeNumber,
   snowflakeObject,
   snowflakeTimestampLtz,
   snowflakeTimestampNtz,
   snowflakeTimestampTz,
-  snowflakeDate,
-  snowflakeGeography,
-  snowflakeNumber,
+  snowflakeVariant,
 } from '../src/columns.ts';
+import { snowflakeTable } from '../src/index.ts';
 
 // Helper: extract the custom type's toDriver/fromDriver via the column config
 function getMappers(columnFn: (name: string) => any) {
-  const table = pgTable('test', { col: columnFn('col') });
+  const table = snowflakeTable('test', { col: columnFn('col') });
   const col = table.col as any;
   return {
     toDriver: (v: any) => col.mapToDriverValue(v),

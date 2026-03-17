@@ -24,12 +24,10 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+      - run: npm install
 
-      - run: bun install
-
-      - run: bun run build
+      - run: npm run build
 
       - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,4 +1,4 @@
-import { customType } from 'drizzle-orm/pg-core';
+import { customType } from './snowflake-core/columns/custom.ts';
 
 /**
  * Snowflake VARIANT column type.

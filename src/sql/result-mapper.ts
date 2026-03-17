@@ -1,31 +1,32 @@
 import {
+  type AnyColumn,
   Column,
-  SQL,
+  type DriverValueDecoder,
   getTableName,
   is,
-  type AnyColumn,
-  type DriverValueDecoder,
   type SelectedFieldsOrdered,
+  SQL,
 } from 'drizzle-orm';
-import {
-  PgCustomColumn,
-  PgDate,
-  PgDateString,
-  PgTime,
-  PgTimestamp,
-  PgTimestampString,
-} from 'drizzle-orm/pg-core';
+import { SnowflakeCustomColumn } from '../snowflake-core/columns/custom.ts';
 
 type SQLInternal<T = unknown> = SQL<T> & {
   decoder: DriverValueDecoder<T, any>;
 };
+
+/** Extract SQL from Aliased (has .sql) or Subquery (has _.sql) */
+function getFieldSql(field: unknown): SQL {
+  const f = field as any;
+  if (f.sql instanceof SQL) return f.sql;
+  if (f._?.sql instanceof SQL) return f._.sql;
+  throw new Error('Cannot extract SQL from field');
+}
 
 type DecoderInput<TDecoder extends DriverValueDecoder<unknown, unknown>> =
   Parameters<TDecoder['mapFromDriverValue']>[0];
 
 function toDecoderInput<TDecoder extends DriverValueDecoder<unknown, unknown>>(
   decoder: TDecoder,
-  value: unknown
+  value: unknown,
 ): DecoderInput<TDecoder> {
   void decoder;
   return value as DecoderInput<TDecoder>;
@@ -33,7 +34,7 @@ function toDecoderInput<TDecoder extends DriverValueDecoder<unknown, unknown>>(
 
 export function normalizeTimestampString(
   value: unknown,
-  withTimezone: boolean
+  withTimezone: boolean,
 ): string | unknown {
   if (value instanceof Date) {
     const iso = value.toISOString().replace('T', ' ');
@@ -51,7 +52,7 @@ export function normalizeTimestampString(
 
 export function normalizeTimestamp(
   value: unknown,
-  withTimezone: boolean
+  withTimezone: boolean,
 ): Date | unknown {
   if (value instanceof Date) {
     return value;
@@ -100,50 +101,15 @@ export function normalizeTime(value: unknown): string | unknown {
 
 function mapDriverValue(
   decoder: DriverValueDecoder<unknown, unknown>,
-  rawValue: unknown
+  rawValue: unknown,
 ): unknown {
-  if (is(decoder, PgTimestampString)) {
-    return decoder.mapFromDriverValue(
-      toDecoderInput(
-        decoder,
-        normalizeTimestampString(rawValue, decoder.withTimezone)
-      )
-    );
-  }
-
-  if (is(decoder, PgTimestamp)) {
-    const normalized = normalizeTimestamp(rawValue, decoder.withTimezone);
-    if (normalized instanceof Date) {
-      return normalized;
-    }
-    return decoder.mapFromDriverValue(toDecoderInput(decoder, normalized));
-  }
-
-  if (is(decoder, PgDateString)) {
-    return decoder.mapFromDriverValue(
-      toDecoderInput(decoder, normalizeDateString(rawValue))
-    );
-  }
-
-  if (is(decoder, PgDate)) {
-    return decoder.mapFromDriverValue(
-      toDecoderInput(decoder, normalizeDateValue(rawValue))
-    );
-  }
-
-  if (is(decoder, PgTime)) {
-    return decoder.mapFromDriverValue(
-      toDecoderInput(decoder, normalizeTime(rawValue))
-    );
-  }
-
   return decoder.mapFromDriverValue(toDecoderInput(decoder, rawValue));
 }
 
 export function mapResultRow<TResult>(
   columns: SelectedFieldsOrdered<AnyColumn>,
   row: unknown[],
-  joinsNotNullableMap: Record<string, boolean> | undefined
+  joinsNotNullableMap: Record<string, boolean> | undefined,
 ): TResult {
   const nullifyMap: Record<string, string | false> = {};
 
@@ -155,12 +121,13 @@ export function mapResultRow<TResult>(
       } else if (is(field, SQL)) {
         decoder = (field as SQLInternal).decoder;
       } else {
-        const col = field.sql.queryChunks.find((chunk) => is(chunk, Column));
+        const fieldSql = getFieldSql(field);
+        const col = fieldSql.queryChunks.find((chunk) => is(chunk, Column));
 
-        if (is(col, PgCustomColumn)) {
+        if (is(col, SnowflakeCustomColumn)) {
           decoder = col;
         } else {
-          decoder = (field.sql as SQLInternal).decoder;
+          decoder = (fieldSql as SQLInternal).decoder;
         }
       }
       let node = acc;
@@ -214,12 +181,11 @@ export function mapResultRow<TResult>(
           if (nullifyMap[objectName] && nullifyMap[objectName] !== tableName) {
             nullifyMap[objectName] = false;
           }
-          continue;
         }
       }
       return acc;
     },
-    {}
+    {},
   );
 
   if (joinsNotNullableMap && Object.keys(nullifyMap).length > 0) {

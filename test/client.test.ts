@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { prepareParams, isPool } from '../src/client.ts';
+import { describe, expect, it } from 'vitest';
+import { isPool, prepareParams } from '../src/client.ts';
 
 describe('prepareParams', () => {
   it('should convert undefined to null', () => {

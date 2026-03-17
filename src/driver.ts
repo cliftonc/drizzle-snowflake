@@ -1,34 +1,34 @@
-import snowflake from 'snowflake-sdk';
 import { entityKind } from 'drizzle-orm/entity';
 import type { Logger } from 'drizzle-orm/logger';
 import { DefaultLogger } from 'drizzle-orm/logger';
-import { PgDatabase } from 'drizzle-orm/pg-core/db';
 import {
   createTableRelationsHelpers,
-  extractTablesRelationalConfig,
   type ExtractTablesWithRelations,
+  extractTablesRelationalConfig,
   type RelationalSchemaConfig,
   type TablesRelationalConfig,
 } from 'drizzle-orm/relations';
-import { type DrizzleConfig } from 'drizzle-orm/utils';
+import type { DrizzleConfig } from 'drizzle-orm/utils';
+import snowflake from 'snowflake-sdk';
+import {
+  closeClientConnection,
+  isPool,
+  promisifyConnect,
+  type SnowflakeConnection,
+} from './client.ts';
+import {
+  createSnowflakeConnectionPool,
+  type SnowflakeConnectionConfig,
+  type SnowflakePoolConfig,
+} from './pool.ts';
 import type {
   SnowflakeClientLike,
   SnowflakeQueryResultHKT,
   SnowflakeTransaction,
 } from './session.ts';
 import { SnowflakeSession } from './session.ts';
-import { SnowflakeDialect } from './dialect.ts';
-import {
-  isPool,
-  closeClientConnection,
-  promisifyConnect,
-  type SnowflakeConnection,
-} from './client.ts';
-import {
-  createSnowflakeConnectionPool,
-  type SnowflakePoolConfig,
-  type SnowflakeConnectionConfig,
-} from './pool.ts';
+import { SnowflakeDatabase as SnowflakeDatabaseBase } from './snowflake-core/db.ts';
+import { SnowflakeDialect } from './snowflake-core/dialect.ts';
 
 export interface SnowflakeDriverOptions {
   logger?: Logger;
@@ -40,11 +40,11 @@ export class SnowflakeDriver {
   constructor(
     private client: SnowflakeClientLike,
     private dialect: SnowflakeDialect,
-    private options: SnowflakeDriverOptions = {}
+    private options: SnowflakeDriverOptions = {},
   ) {}
 
   createSession(
-    schema: RelationalSchemaConfig<TablesRelationalConfig> | undefined
+    schema: RelationalSchemaConfig<TablesRelationalConfig> | undefined,
   ): SnowflakeSession<Record<string, unknown>, TablesRelationalConfig> {
     return new SnowflakeSession(this.client, this.dialect, schema, {
       logger: this.options.logger,
@@ -89,7 +89,7 @@ function createFromClient<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
   client: SnowflakeClientLike,
-  config: SnowflakeDrizzleConfig<TSchema> = {}
+  config: SnowflakeDrizzleConfig<TSchema> = {},
 ): SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>> {
   const dialect = new SnowflakeDialect();
 
@@ -101,7 +101,7 @@ function createFromClient<
   if (config.schema) {
     const tablesConfig = extractTablesRelationalConfig(
       config.schema,
-      createTableRelationsHelpers
+      createTableRelationsHelpers,
     );
     schema = {
       fullSchema: config.schema,
@@ -121,7 +121,7 @@ async function createFromConnectionConfig<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
   connectionOptions: SnowflakeConnectionConfig,
-  config: SnowflakeDrizzleConfig<TSchema> = {}
+  config: SnowflakeDrizzleConfig<TSchema> = {},
 ): Promise<SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>> {
   if (config.pool === false) {
     const conn = snowflake.createConnection(connectionOptions);
@@ -140,7 +140,7 @@ async function createFromConnectionConfig<
 export function drizzle<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
-  connectionConfig: SnowflakeConnectionConfig
+  connectionConfig: SnowflakeConnectionConfig,
 ): Promise<SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>>;
 
 // Overload 2: Connection config + drizzle config (async, auto-pools)
@@ -148,21 +148,21 @@ export function drizzle<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
   connectionConfig: SnowflakeConnectionConfig,
-  config: SnowflakeDrizzleConfig<TSchema>
+  config: SnowflakeDrizzleConfig<TSchema>,
 ): Promise<SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>>;
 
 // Overload 3: Config with connection (async, auto-pools)
 export function drizzle<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
-  config: SnowflakeDrizzleConfigWithConnection<TSchema>
+  config: SnowflakeDrizzleConfigWithConnection<TSchema>,
 ): Promise<SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>>;
 
 // Overload 4: Config with explicit client (sync)
 export function drizzle<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
-  config: SnowflakeDrizzleConfigWithClient<TSchema>
+  config: SnowflakeDrizzleConfigWithClient<TSchema>,
 ): SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>;
 
 // Overload 5: Explicit client (sync, backward compatible)
@@ -170,7 +170,7 @@ export function drizzle<
   TSchema extends Record<string, unknown> = Record<string, never>,
 >(
   client: SnowflakeClientLike,
-  config?: SnowflakeDrizzleConfig<TSchema>
+  config?: SnowflakeDrizzleConfig<TSchema>,
 ): SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>;
 
 // Implementation
@@ -182,7 +182,7 @@ export function drizzle<
     | SnowflakeClientLike
     | SnowflakeDrizzleConfigWithConnection<TSchema>
     | SnowflakeDrizzleConfigWithClient<TSchema>,
-  config?: SnowflakeDrizzleConfig<TSchema>
+  config?: SnowflakeDrizzleConfig<TSchema>,
 ):
   | SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>
   | Promise<SnowflakeDatabase<TSchema, ExtractTablesWithRelations<TSchema>>> {
@@ -197,7 +197,7 @@ export function drizzle<
       const { client: clientValue, ...restConfig } = clientConfig;
       return createFromClient(
         clientValue,
-        restConfig as SnowflakeDrizzleConfig<TSchema>
+        restConfig as SnowflakeDrizzleConfig<TSchema>,
       );
     }
 
@@ -207,12 +207,12 @@ export function drizzle<
       const { connection, ...restConfig } = connConfig;
       return createFromConnectionConfig(
         connection,
-        restConfig as SnowflakeDrizzleConfig<TSchema>
+        restConfig as SnowflakeDrizzleConfig<TSchema>,
       );
     }
 
     throw new Error(
-      'Invalid drizzle config: either connection or client must be provided'
+      'Invalid drizzle config: either connection or client must be provided',
     );
   }
 
@@ -226,7 +226,7 @@ export function drizzle<
   ) {
     return createFromConnectionConfig(
       clientOrConfig as SnowflakeConnectionConfig,
-      config
+      config,
     );
   }
 
@@ -238,17 +238,17 @@ export class SnowflakeDatabase<
   TFullSchema extends Record<string, unknown> = Record<string, never>,
   TSchema extends TablesRelationalConfig =
     ExtractTablesWithRelations<TFullSchema>,
-> extends PgDatabase<SnowflakeQueryResultHKT, TFullSchema, TSchema> {
-  static readonly [entityKind]: string = 'SnowflakeDatabase';
+> extends SnowflakeDatabaseBase<TFullSchema, TSchema> {
+  static override readonly [entityKind]: string = 'SnowflakeDatabase';
 
   /** The underlying connection or pool */
   readonly $client: SnowflakeClientLike;
 
   constructor(
-    readonly dialect: SnowflakeDialect,
-    readonly session: SnowflakeSession<TFullSchema, TSchema>,
+    override readonly dialect: SnowflakeDialect,
+    override readonly session: SnowflakeSession<TFullSchema, TSchema>,
     schema: RelationalSchemaConfig<TSchema> | undefined,
-    client: SnowflakeClientLike
+    client: SnowflakeClientLike,
   ) {
     super(dialect, session, schema);
     this.$client = client;
@@ -264,7 +264,7 @@ export class SnowflakeDatabase<
   }
 
   override async transaction<T>(
-    transaction: (tx: SnowflakeTransaction<TFullSchema, TSchema>) => Promise<T>
+    transaction: (tx: SnowflakeTransaction<TFullSchema, TSchema>) => Promise<T>,
   ): Promise<T> {
     return await this.session.transaction<T>(transaction);
   }

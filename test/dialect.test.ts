@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
 import { sql } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 import { SnowflakeDialect } from '../src/dialect.ts';
 
 describe('SnowflakeDialect', () => {
   const dialect = new SnowflakeDialect();
 
-  describe('sqlToQuery - parameter rewriting', () => {
-    it('should rewrite $1 to ?', () => {
+  describe('sqlToQuery - parameter style', () => {
+    it('should use ? for params', () => {
       const query = sql`SELECT * FROM users WHERE id = ${1}`;
       const result = dialect.sqlToQuery(query);
       expect(result.sql).not.toContain('$1');
@@ -14,7 +14,7 @@ describe('SnowflakeDialect', () => {
       expect(result.params).toEqual([1]);
     });
 
-    it('should rewrite multiple $N params to ?', () => {
+    it('should use ? for multiple params', () => {
       const query = sql`SELECT * FROM users WHERE id = ${1} AND name = ${'alice'}`;
       const result = dialect.sqlToQuery(query);
       expect(result.sql).not.toMatch(/\$\d+/);
@@ -39,9 +39,17 @@ describe('SnowflakeDialect', () => {
     });
   });
 
-  describe('areSavepointsUnsupported', () => {
-    it('should return true', () => {
-      expect(dialect.areSavepointsUnsupported()).toBe(true);
+  describe('escapeName', () => {
+    it('should use double quotes', () => {
+      expect(dialect.escapeName('table_name')).toBe('"table_name"');
+    });
+  });
+
+  describe('escapeParam', () => {
+    it('should use ? for all params', () => {
+      expect(dialect.escapeParam(0)).toBe('?');
+      expect(dialect.escapeParam(1)).toBe('?');
+      expect(dialect.escapeParam(10)).toBe('?');
     });
   });
 });

@@ -56,6 +56,30 @@ export function promisifyExecute(
   });
 }
 
+export function promisifyExecuteArrayMode(
+  connection: SnowflakeConnection,
+  sqlText: string,
+  binds: unknown[]
+): Promise<{ statement: snowflake.RowStatement; rows: unknown[][] }> {
+  return new Promise((resolve, reject) => {
+    connection.execute({
+      sqlText,
+      binds: binds as snowflake.Binds,
+      rowMode: 'array' as any,
+      complete(err, statement, rows) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({
+            statement: statement as snowflake.RowStatement,
+            rows: (rows ?? []) as unknown[][],
+          });
+        }
+      },
+    });
+  });
+}
+
 export function prepareParams(params: unknown[]): unknown[] {
   return params.map((param) => {
     if (param === undefined) return null;
@@ -129,21 +153,14 @@ export async function executeArraysOnClient(
   }
 
   const prepared = prepareParams(params);
-  const { statement, rows } = await promisifyExecute(client, query, prepared);
+  const { statement, rows } = await promisifyExecuteArrayMode(client, query, prepared);
 
   const stmtColumns = statement.getColumns();
   const columnNames = deduplicateColumns(
     stmtColumns.map((col: snowflake.Column) => col.getName())
   );
 
-  const arrayRows: unknown[][] = (rows ?? []).map((row) =>
-    columnNames.map((_name, idx) => {
-      const originalName = stmtColumns[idx]!.getName();
-      return row[originalName] ?? null;
-    })
-  );
-
-  return { columns: columnNames, rows: arrayRows };
+  return { columns: columnNames, rows };
 }
 
 export function closeClientConnection(

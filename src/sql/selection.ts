@@ -1,10 +1,11 @@
-import { Column, SQL, getTableName, is, sql } from 'drizzle-orm';
-import type { SelectedFields } from 'drizzle-orm/pg-core';
+import { Column, getTableName, is, SQL, sql } from 'drizzle-orm';
+
+type SelectedFields = Record<string, unknown>;
 
 function mapEntries(
   obj: Record<string, unknown>,
   prefix?: string,
-  fullJoin = false
+  fullJoin = false,
 ): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj)
@@ -48,13 +49,13 @@ function mapEntries(
         }
 
         return [key, value];
-      })
+      }),
   );
 }
 
 export function aliasFields(
   fields: SelectedFields,
-  fullJoin = false
+  fullJoin = false,
 ): SelectedFields {
   return mapEntries(fields, undefined, fullJoin) as SelectedFields;
 }
