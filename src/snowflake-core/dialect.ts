@@ -27,7 +27,11 @@ export class SnowflakeDialect {
   }
 
   escapeName(name: string): string {
-    return `"${name}"`;
+    // Snowflake uses unquoted identifiers that resolve to uppercase.
+    // Quoting preserves case, which causes mismatches between Drizzle's
+    // quoted references and external code using sql.raw() (e.g. CTE names).
+    // Not quoting keeps everything case-insensitive and consistent.
+    return name;
   }
 
   escapeParam(_num: number): string {

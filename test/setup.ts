@@ -112,48 +112,48 @@ export async function setupAll(): Promise<void> {
   // Now create the pool — database exists so all connections will use it
   const db = await getDb();
 
-  // Drop existing tables (quoted lowercase to match Drizzle identifier quoting)
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_users"`);
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_products"`);
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_events"`);
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_items"`);
+  // Drop existing tables (unquoted — Snowflake uppercases consistently)
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_users`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_products`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_events`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_items`);
 
   await db.execute(sql`
-    CREATE TABLE "drizzle_test_users" (
-      "id" INT NOT NULL,
-      "name" VARCHAR(256) NOT NULL,
-      "email" VARCHAR NULL,
-      "active" BOOLEAN DEFAULT TRUE,
-      "score" FLOAT NULL
+    CREATE TABLE drizzle_test_users (
+      id INT NOT NULL,
+      name VARCHAR(256) NOT NULL,
+      email VARCHAR NULL,
+      active BOOLEAN DEFAULT TRUE,
+      score FLOAT NULL
     )
   `);
   await db.execute(sql`
-    CREATE TABLE "drizzle_test_products" (
-      "id" INT NOT NULL,
-      "name" VARCHAR(256) NOT NULL,
-      "quantity" INT NOT NULL,
-      "price" DOUBLE NOT NULL,
-      "category" VARCHAR(100) NULL,
-      "active" BOOLEAN DEFAULT TRUE,
-      "created_at" TIMESTAMP_NTZ NULL
+    CREATE TABLE drizzle_test_products (
+      id INT NOT NULL,
+      name VARCHAR(256) NOT NULL,
+      quantity INT NOT NULL,
+      price DOUBLE NOT NULL,
+      category VARCHAR(100) NULL,
+      active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP_NTZ NULL
     )
   `);
   await db.execute(sql`
-    CREATE TABLE "drizzle_test_events" (
-      "id" INT NOT NULL,
-      "name" VARCHAR(256) NOT NULL,
-      "started_at" TIMESTAMP_NTZ NULL,
-      "ended_at" TIMESTAMP_NTZ NULL,
-      "category" VARCHAR(100) NULL,
-      "value" FLOAT NULL
+    CREATE TABLE drizzle_test_events (
+      id INT NOT NULL,
+      name VARCHAR(256) NOT NULL,
+      started_at TIMESTAMP_NTZ NULL,
+      ended_at TIMESTAMP_NTZ NULL,
+      category VARCHAR(100) NULL,
+      value FLOAT NULL
     )
   `);
   await db.execute(sql`
-    CREATE TABLE "drizzle_test_items" (
-      "id" INT NOT NULL,
-      "name" VARCHAR(256) NOT NULL,
-      "metadata" VARIANT NULL,
-      "created_at" TIMESTAMP_NTZ NULL
+    CREATE TABLE drizzle_test_items (
+      id INT NOT NULL,
+      name VARCHAR(256) NOT NULL,
+      metadata VARIANT NULL,
+      created_at TIMESTAMP_NTZ NULL
     )
   `);
 
@@ -184,20 +184,20 @@ export async function setupAll(): Promise<void> {
 
   // Seed items (2 rows) — use INSERT ... SELECT with PARSE_JSON for VARIANT columns
   await db.execute(
-    sql`INSERT INTO "drizzle_test_items" ("id", "name", "metadata", "created_at")
+    sql`INSERT INTO drizzle_test_items (id, name, metadata, created_at)
         SELECT 1, 'Test Item', PARSE_JSON(${JSON.stringify({ tags: ['important', 'urgent'], priority: 1 })}), '2024-01-01 00:00:00'::TIMESTAMP_NTZ`,
   );
   await db.execute(
-    sql`INSERT INTO "drizzle_test_items" ("id", "name", "metadata", "created_at")
+    sql`INSERT INTO drizzle_test_items (id, name, metadata, created_at)
         SELECT 2, 'Quoted Item', PARSE_JSON(${JSON.stringify({ note: "it's a test", tags: ["won't break"] })}), '2024-06-15 00:00:00'::TIMESTAMP_NTZ`,
   );
 }
 
 export async function teardownAll(): Promise<void> {
   const db = await getDb();
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_users"`);
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_products"`);
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_events"`);
-  await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_items"`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_users`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_products`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_events`);
+  await db.execute(sql`DROP TABLE IF EXISTS drizzle_test_items`);
   await closeDb();
 }
