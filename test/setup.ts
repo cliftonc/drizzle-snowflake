@@ -93,14 +93,24 @@ export async function closeDb(): Promise<void> {
 // -- One-time setup: create tables and seed all data --
 
 export async function setupAll(): Promise<void> {
-  const db = await getDb();
   const database = process.env.SNOWFLAKE_DATABASE ?? 'TESTDB';
-  const schema = process.env.SNOWFLAKE_SCHEMA ?? 'PUBLIC';
 
-  // Ensure database exists and is selected
-  await db.execute(sql.raw(`CREATE DATABASE IF NOT EXISTS ${database}`));
-  await db.execute(sql.raw(`USE DATABASE ${database}`));
-  await db.execute(sql.raw(`USE SCHEMA ${schema}`));
+  // Ensure database exists — use a temporary non-pooled connection
+  // (without a database set) to create it before the pool connects
+  const snowflakeSdk = await import('snowflake-sdk');
+  const { promisifyConnect, promisifyExecute, closeClientConnection } = await import('../src/client.ts');
+  const tempConn = snowflakeSdk.default.createConnection({
+    account: process.env.SNOWFLAKE_ACCOUNT!,
+    username: process.env.SNOWFLAKE_USER!,
+    password: process.env.SNOWFLAKE_PASSWORD!,
+    warehouse: process.env.SNOWFLAKE_WAREHOUSE ?? 'COMPUTE_WH',
+  });
+  await promisifyConnect(tempConn);
+  await promisifyExecute(tempConn, `CREATE DATABASE IF NOT EXISTS ${database}`, []);
+  await closeClientConnection(tempConn);
+
+  // Now create the pool — database exists so all connections will use it
+  const db = await getDb();
 
   // Drop existing tables (quoted lowercase to match Drizzle identifier quoting)
   await db.execute(sql`DROP TABLE IF EXISTS "drizzle_test_users"`);
