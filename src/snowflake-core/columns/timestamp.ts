@@ -5,8 +5,8 @@ import { SnowflakeDateColumnBaseBuilder } from './date.common.ts';
 export class SnowflakeTimestampBuilder extends SnowflakeDateColumnBaseBuilder {
   static readonly [entityKind]: string = 'SnowflakeTimestampBuilder';
 
-  constructor(name: string) {
-    super(name, 'date', 'SnowflakeTimestamp');
+  constructor(name: string, mode: 'date' | 'string') {
+    super(name, mode, 'SnowflakeTimestamp');
   }
 
   /** @internal */
@@ -23,6 +23,6 @@ export class SnowflakeTimestamp extends SnowflakeColumn {
   }
 }
 
-export function timestamp(name?: string) {
-  return new SnowflakeTimestampBuilder(name ?? '');
+export function timestamp(name?: string, config?: { mode?: 'date' | 'string' }) {
+  return new SnowflakeTimestampBuilder(name ?? '', config?.mode ?? 'date');
 }
