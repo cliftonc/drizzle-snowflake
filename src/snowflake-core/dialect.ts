@@ -22,17 +22,11 @@ export class SnowflakeDialect {
   /** @internal */
   casing: any;
 
-  /** @internal */
-  private _activeCteNames = new Set<string>();
-
   constructor(config?: { casing?: any }) {
     this.casing = new CasingCache(config?.casing);
   }
 
   escapeName = (name: string): string => {
-    if (this._activeCteNames.has(name)) {
-      return name;
-    }
     return `"${name}"`;
   };
 
@@ -108,19 +102,6 @@ export class SnowflakeDialect {
 
   buildWithCTE(queries: any[] | undefined): SQL | undefined {
     if (!queries?.length) return undefined;
-    for (const w of queries) {
-      this._activeCteNames.add(w._.alias);
-      // Collect SQL.Aliased field aliases so cross-CTE raw SQL references
-      // resolve consistently (unquoted → uppercase in Snowflake).
-      // Skip Column instances to avoid collisions with table column names.
-      if (w._.selectedFields) {
-        for (const value of Object.values(w._.selectedFields)) {
-          if (is(value, SQL.Aliased) && value.fieldAlias) {
-            this._activeCteNames.add(value.fieldAlias);
-          }
-        }
-      }
-    }
     const withSqlChunks = [sql`with `];
     for (const [i, w] of queries.entries()) {
       withSqlChunks.push(sql`${sql.identifier(w._.alias)} as (${w._.sql})`);
@@ -467,17 +448,13 @@ export class SnowflakeDialect {
   }
 
   sqlToQuery(sql2: SQL, invokeSource?: any): any {
-    try {
-      return sql2.toQuery({
-        casing: this.casing,
-        escapeName: this.escapeName,
-        escapeParam: this.escapeParam,
-        escapeString: this.escapeString,
-        prepareTyping: this.prepareTyping as any,
-        invokeSource,
-      });
-    } finally {
-      this._activeCteNames.clear();
-    }
+    return sql2.toQuery({
+      casing: this.casing,
+      escapeName: this.escapeName,
+      escapeParam: this.escapeParam,
+      escapeString: this.escapeString,
+      prepareTyping: this.prepareTyping as any,
+      invokeSource,
+    });
   }
 }
