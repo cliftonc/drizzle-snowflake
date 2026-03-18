@@ -2,6 +2,7 @@ import snowflake from 'snowflake-sdk';
 import {
   closeClientConnection,
   promisifyConnect,
+  promisifyExecute,
   type SnowflakeConnection,
   type SnowflakeConnectionPool,
 } from './client.ts';
@@ -22,6 +23,12 @@ export interface SnowflakeConnectionPoolOptions {
   maxLifetimeMs?: number;
   /** Max idle time (ms) before an idle connection is discarded. */
   idleTimeoutMs?: number;
+  /**
+   * SQL statements to execute on each new connection after it is established.
+   * Useful for session-level settings like:
+   *   `["ALTER SESSION SET QUOTED_IDENTIFIERS_IGNORE_CASE = TRUE"]`
+   */
+  initStatements?: string[];
 }
 
 export type SnowflakeConnectionConfig = snowflake.ConnectionOptions;
@@ -66,9 +73,18 @@ export function createSnowflakeConnectionPool(
     return false;
   };
 
+  const initStatements = options.initStatements ?? [];
+
   const createConnection = async (): Promise<SnowflakeConnection> => {
     const conn = snowflake.createConnection(connectionOptions);
-    return promisifyConnect(conn);
+    const connection = await promisifyConnect(conn);
+
+    // Run init statements on each new connection (e.g. ALTER SESSION SET ...)
+    for (const stmt of initStatements) {
+      await promisifyExecute(connection, stmt, []);
+    }
+
+    return connection;
   };
 
   const acquire = async (): Promise<SnowflakeConnection> => {

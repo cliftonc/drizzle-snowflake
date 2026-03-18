@@ -14,6 +14,7 @@ import {
   closeClientConnection,
   isPool,
   promisifyConnect,
+  promisifyExecute,
   type SnowflakeConnection,
 } from './client.ts';
 import {
@@ -57,6 +58,16 @@ export interface SnowflakeDrizzleConfig<
 > extends DrizzleConfig<TSchema> {
   /** Pool configuration. Use size config or false to disable. */
   pool?: SnowflakePoolConfig | false;
+  /**
+   * SQL statements to execute on each new connection after it is established.
+   * Useful for session-level settings like:
+   * ```ts
+   * initStatements: ['ALTER SESSION SET QUOTED_IDENTIFIERS_IGNORE_CASE = TRUE']
+   * ```
+   * When pooling is enabled, these run on every pool connection, not just the first.
+   * When pooling is disabled (`pool: false`), they run on the single connection.
+   */
+  initStatements?: string[];
 }
 
 export interface SnowflakeDrizzleConfigWithConnection<
@@ -126,12 +137,21 @@ async function createFromConnectionConfig<
   if (config.pool === false) {
     const conn = snowflake.createConnection(connectionOptions);
     const connection = await promisifyConnect(conn);
+
+    // Run init statements on the single connection
+    if (config.initStatements) {
+      for (const stmt of config.initStatements) {
+        await promisifyExecute(connection, stmt, []);
+      }
+    }
+
     return createFromClient(connection, config);
   }
 
   const poolSize = config.pool?.size ?? 4;
   const pool = createSnowflakeConnectionPool(connectionOptions, {
     size: poolSize,
+    initStatements: config.initStatements,
   });
   return createFromClient(pool, config);
 }
